@@ -9,13 +9,11 @@ BEGIN {
     local $@;
     eval { require YAML::Syck };
     if ($@) {
-        *Load     = *YAML::Syck::Load;
-        *LoadFile = *YAML::Syck::LoadFile;
+        require YAML;
+        *LoadFile = *YAML::LoadFile;
     }
     else {
-        require YAML;
-        *Load     = *YAML::Load;
-        *LoadFile = *YAML::LoadFile;
+        *LoadFile = *YAML::Syck::LoadFile;
     }
 }
 

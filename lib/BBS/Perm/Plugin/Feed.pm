@@ -7,7 +7,7 @@ use Gtk2;
 use Glib qw/TRUE FALSE/;
 use File::Slurp;
 
-use version; our $VERSION = qv('0.0.1');
+use version; our $VERSION = qv('0.0.2');
 
 sub new {
     my ( $class, %args ) = @_;
@@ -96,12 +96,12 @@ __END__
 
 =head1 NAME
 
-BBS::Perm::Plugin::Feed - A Feed Plugin for BBS::Perm
+BBS::Perm::Plugin::Feed - a feed plugin for BBS::Perm
 
 
 =head1 VERSION
 
-This document describes BBS::Perm::Command version 0.0.1
+This document describes BBS::Perm::Command version 0.0.2
 
 
 =head1 SYNOPSIS
@@ -123,9 +123,13 @@ commited to the terminal.
 
 =over 4
 
-=item new( label => $label )
+=item new( label => $label, widget => $widget )
 
-Create a new BBS::Perm::Plugin::Feed object, the label will be set as $label.
+Create a new BBS::Perm::Plugin::Feed object.
+
+$widget is a Gtk2::HBox object, default is a new one.
+
+$label is a string, name it to what you want, default is '_Feed'.
 
 =item text
 

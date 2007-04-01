@@ -66,6 +66,5 @@ elsif ( $cmd eq 'telnet' ) {
         ],
     );
 }
-$exp->set_seq( "\ck", sub { exit } );
 $exp->set_seq( "\cu", sub { $exp->send_slow( 0, "r\nre\cw\n" ); return 1; } );
-$exp->interact;
+$exp->interact( \*STDIN, "\cd" );

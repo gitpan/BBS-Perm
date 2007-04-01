@@ -5,7 +5,7 @@ use strict;
 use Carp;
 use Gtk2;
 
-use version; our $VERSION = qv('0.0.1');
+use version; our $VERSION = qv('0.0.2');
 
 sub new {
     my ( $class, %opt ) = @_;
@@ -61,12 +61,12 @@ __END__
 
 =head1 NAME
 
-BBS::Perm::Plugin::URI - render quickly URI submitting for BBS::Perm
+BBS::Perm::Plugin::URI - render quickly URI submittal for BBS::Perm
 
 
 =head1 VERSION
 
-This document describes BBS::Perm::Plugin::URI version 0.0.1
+This document describes BBS::Perm::Plugin::URI version 0.0.2
 
 =head1 SYNOPSIS
 
@@ -96,9 +96,14 @@ To make this work, you have to enable BBS::Perm's accel option.
 
 =over 4
 
-=item new
+=item new( browser => $browser, widget => $widget )
 
 create a new BBS::Perm::Plugin::URI object
+
+$browser is your command to visit the URI, which will be provideed as the
+argument.
+
+$widget is a Gtk2::LinkButton object, default is a new one.
 
 =item widget
 

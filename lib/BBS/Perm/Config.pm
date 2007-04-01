@@ -4,17 +4,17 @@ use warnings;
 use strict;
 use Carp;
 
-use version; our $VERSION = qv('0.0.1');
+use version; our $VERSION = qv('0.0.2');
 
 BEGIN {
     local $@;
-    eval { require YAML::Syck };
+    eval { require YAML::Syck; };
     if ($@) {
-        *LoadFile = *YAML::Syck::LoadFile;
-    }
-    else {
         require YAML;
         *LoadFile = *YAML::LoadFile;
+    }
+    else {
+        *LoadFile = *YAML::Syck::LoadFile;
     }
 }
 
@@ -72,7 +72,7 @@ BBS::Perm::Config - wrap a BBS::Perm configuration file
 
 =head1 VERSION
 
-This document describes BBS::Perm::Config version 0.0.1
+This document describes BBS::Perm::Config version 0.0.2
 
 
 =head1 SYNOPSIS

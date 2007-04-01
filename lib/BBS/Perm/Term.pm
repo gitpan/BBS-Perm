@@ -5,7 +5,7 @@ use strict;
 use Carp;
 use Glib qw/TRUE FALSE/;
 use Gnome2::Vte;
-use version; our $VERSION = qv('0.0.1');
+use version; our $VERSION = qv('0.0.2');
 
 sub new {
     my ( $class, %opt ) = @_;
@@ -31,7 +31,7 @@ sub init {    # initiate a new term
         $term->set_font_full( $font,
             $conf->{font}{anti_alias} || 'force_disable' );
     }
-#    it doesn't work, I think it's the problem of Gnome2::Vte or vtelib.
+#    color setting doesn't work, I think it's the problem of Gnome2::Vte or vtelib.
 #    if ( $conf->{color} ) {
 #        my @elements = qw/foreground background dim bold cursor highlight/;
 #        for (@elements) {
@@ -138,9 +138,10 @@ sub switch {    # switch terms, -1 for left, 1 for right
 
 sub connect {
     my ( $self, $conf, $file, $site ) = @_;
-    if ( $conf->{agent} ) {
-        $self->term->fork_command( $conf->{agent},
-            [ $conf->{agent}, $file, $site ],
+    my $agent = $conf->{agent} || $self->{agent};
+    if ( $agent ) {
+        $self->term->fork_command( $agent,
+            [ $agent, $file, $site ],
             undef, q{}, FALSE, FALSE, FALSE );
     }
     else {
@@ -166,57 +167,46 @@ sub widget {
     return shift->{widget};
 }
 
-# add methord for all the keys of %$self
-
 1;
 
 __END__
 
 =head1 NAME
 
-BBS::Perm::Term - a multi terminals component based on Vte
+BBS::Perm::Term - a multi-terminals component based on Vte for BBS::Perm
 
 
 =head1 VERSION
 
-This document describes BBS::Perm::Term version 0.0.1
+This document describes BBS::Perm::Term version 0.0.2
 
 
 =head1 SYNOPSIS
 
     use BBS::Perm::Term;
-    my $term = BBS::Perm::Term->new( widget => Gtk2::HBox->new );
+    my $term = BBS::Perm::Term->new;
 
 =head1 DESCRIPTION
     
-L<BBS::Perm::Term> is a Gnome's Vte based terminal, mainly for BBS::Perm.
+L<BBS::Perm::Term> is a Gnome2::Vte based terminal, mainly for BBS::Perm.
 In fact, it's a transperant wrapper to Gnome2::Vte.
 
 =head1 INTERFACE
 
 =over 4
 
-=item new( %option )
+=item new( agent => $agent, widget => $widget )
 
 create a new BBS::Perm::Term object.
-%option could have these keys:
 
-=over 4
+$widget is a Gtk2::HBox or Gtk2::VBox object, which will be the
+container of our terminals, default is a new Gtk2::HBox object.
 
-=item widget => $container_widget
+$agent designate our agent script, default is 'bbs-perm-agent'. 
 
-$container_widget is a Gtk2::HBox or Gtk2::VBox object, which will be the
-container of our terminals.
-
-=item agent => $agent_command
-
-designate where is your agent script, default is 'bbs-perm-agent'. 
-
-$agent_command will be called as "$agent_command $file $sitename",
+$agent will be called as "$agent $file $sitename",
 where $file and $sitename have the same meanings as BBS::Perm::Config's,
-so your script can get enough information given these two arguments.
-
-=back
+so our script can get enough information by these two arguments.
 
 =item term
 
@@ -265,7 +255,7 @@ None reported.
 
 You can't set colors for Gnome2::Vte::Terminal object right now, at least this
 doesn't work to me.
-Anyway, hey, the default color scheme is pretty enough, isn't?
+Anyway, hey, the default color scheme is pretty enough, isn't? ;-)
 
 =head1 AUTHOR
 

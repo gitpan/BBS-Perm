@@ -12,7 +12,7 @@ require BBS::Perm::Config;
 require UNIVERSAL::require;
 require UNIVERSAL::moniker;
 
-use version; our $VERSION = qv('0.0.1');
+use version; our $VERSION = qv('0.0.2');
 
 my %component = (
     IP   => 0,
@@ -67,7 +67,7 @@ sub new {
         $self->feed->entry->signal_connect(
             activate => sub {
                 my $text = $self->feed->text || q{};
-                $text =~ s/(\033)/$1$1/g;
+                $text =~ s/(\033)/$1$1/g;    # term itself will eat an escape
                 $self->term->term->feed_child_binary($text);
                 $self->feed->entry->set_text(q{});
             }
@@ -77,7 +77,7 @@ sub new {
     return $self;
 }
 
-sub _clean {    # be called when an agent exited
+sub _clean {                                 # be called when an agent exited
     my $self = shift;
     $self->term->clean;
     if ( $self->term->term ) {
@@ -248,7 +248,6 @@ sub AUTOLOAD {
 # we need this because of AUTOLOAD
 sub DESTROY { }
 
-
 1;
 
 __END__
@@ -260,7 +259,7 @@ BBS::Perm - a component for your own BBS client
 
 =head1 VERSION
 
-This document describes BBS::Perm version 0.0.1
+This document describes BBS::Perm version 0.0.2
 
 
 =head1 SYNOPSIS
@@ -269,7 +268,7 @@ This document describes BBS::Perm version 0.0.1
     my $perm = BBS::Perm->new(
         perm   => { accel => 1 },
         config => { file   => '.bbs-perm/config.yml' },
-        term => { agent => 'bbs-perm-agent' },
+        ip => { encoding => 'gbk' }
     );
 
 =head1 DESCRIPTION

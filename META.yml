@@ -32,4 +32,4 @@ version: !!perl/hash:version
   version: 
     - 0
     - 0
-    - 1
+    - 2

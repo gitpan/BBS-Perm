@@ -10,7 +10,7 @@ use Gtk2;
 use Glib qw/TRUE FALSE/;
 use Encode;
 
-use version; our $VERSION = qv('0.0.1');
+use version; our $VERSION = qv('0.0.2');
 my $qqwry = IP::QQWry->new;
 
 sub new {
@@ -21,6 +21,7 @@ sub new {
     my $self   = { ip => {} };
     $self->{widget} = $widget;
     $self->{_id}    = $id;
+    $self->{_encoding} = $opt{encoding} || 'gbk';
     bless $self, ref $class || $class;
 }
 
@@ -49,10 +50,6 @@ sub ip {
     return $self->{ip};
 }
 
-#sub size {
-#    return scalar keys %{ shift->ip };
-#}
-
 sub clear {
     shift->{ip} = {};
 }
@@ -63,7 +60,7 @@ sub show {
 
     if ( $self->ip ) {
         for ( sort keys %{ $self->ip } ) {
-            my $info = decode( 'gbk', join '',
+            my $info = decode( $self->{_encoding}, join '',
                 grep {$_} @{ $self->ip->{$_} })
                 || q{};
             $show .= $_ . ': ' . $info . "; ";
@@ -97,7 +94,7 @@ BBS::Perm::Plugin::IP - render IP infomation for BBS::Perm
 
 =head1 VERSION
 
-This document describes BBS::Perm::Plugin::IP version 0.0.1
+This document describes BBS::Perm::Plugin::IP version 0.0.2
 
 
 =head1 SYNOPSIS
@@ -109,17 +106,23 @@ This document describes BBS::Perm::Plugin::IP version 0.0.1
 
 =head1 DESCRIPTION
 
-BBS::Perm::Plugin::IP is a plugin of BBS::Plugin for IP infomation.
-It's used to extract IPv4 address and get some information from the IP.
+BBS::Perm::Plugin::IP is a plugin of BBS::Perm for IP infomation.
+It's used to extract IPv4 address and get some information about the IP.
 Its widget is a Gtk2::Statusbar object, which is used to show the infomation.
 
 =head1 INTERFACE
 
 =over 4
 
-=item new
+=item new( encoding => $encoding, widget => $widget, qqwry => $path )
 
-Create a new BBS::Perm::Plugin::IP object
+create a new BBS::Perm::Plugin::IP object.
+
+$encoding is your QQWry.Dat's encoding, default is 'gbk';
+
+$widget is a Gtk2::Statusbar object, default is a new one.
+
+$path is your QQWry.Dat's path.
 
 =item ip
 
