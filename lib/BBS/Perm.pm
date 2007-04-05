@@ -6,13 +6,12 @@ use strict;
 use Carp;
 use Regexp::Common qw/URI/;
 use Encode;
+use BBS::Perm::Term;
+use BBS::Perm::Config;
+use UNIVERSAL::require;
+use UNIVERSAL::moniker;
 
-require BBS::Perm::Term;
-require BBS::Perm::Config;
-require UNIVERSAL::require;
-require UNIVERSAL::moniker;
-
-use version; our $VERSION = qv('0.0.2');
+use version; our $VERSION = qv('0.0.3');
 
 my %component = (
     IP   => 0,
@@ -68,7 +67,7 @@ sub new {
             activate => sub {
                 my $text = $self->feed->text || q{};
                 $text =~ s/(\033)/$1$1/g;    # term itself will eat an escape
-                $self->term->term->feed_child_binary($text);
+                $self->term->term->feed_child_binary(encode 'gbk', $text);
                 $self->feed->entry->set_text(q{});
             }
         );
@@ -84,7 +83,8 @@ sub _clean {                                 # be called when an agent exited
         $self->window->set_title( $self->term->title );
     }
     else {
-        $self->window->set_title('bbs-perm');
+        $self->window->set_title($self->config->setting('global')->{title} ||
+                'bbs-perm' );
     }
 }
 
@@ -104,7 +104,7 @@ sub _register_accel {
     for ( keys %accel ) {
         my $value = $accel{$_};
         my $mod   = ['mod1-mask'];
-        if ( $value =~ /^(C|M)-(\w)/i ) {
+        if ( $value =~ /^(C|M)-(.)/i ) {
             $mod = ['control-mask'] if lc $1 eq 'c';
             $accel{$_} = [ $2, $mod ];
         }
@@ -259,7 +259,7 @@ BBS::Perm - a component for your own BBS client
 
 =head1 VERSION
 
-This document describes BBS::Perm version 0.0.2
+This document describes BBS::Perm version 0.0.3
 
 
 =head1 SYNOPSIS

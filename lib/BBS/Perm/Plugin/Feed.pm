@@ -6,8 +6,8 @@ use Carp;
 use Gtk2;
 use Glib qw/TRUE FALSE/;
 use File::Slurp;
-
-use version; our $VERSION = qv('0.0.2');
+use Encode;
+use version; our $VERSION = qv('0.0.3');
 
 sub new {
     my ( $class, %args ) = @_;
@@ -61,11 +61,20 @@ sub text {
     my $self  = shift;
     my $input = $self->entry->get_text;
     my $text;
-    if ( $input =~ /^\s*:(.*)/ ) {
-        $text = `$1`;
+    
+    my $encoding = 'utf8';          # default is utf8
+    if ( $ENV{LLC_ALL} =~ /\.(.*)$/ ) {
+        $encoding = lc $1;
+    }
+    elsif ( $ENV{LANG} =~ /\.(.*)$/ ) {
+        $encoding = lc $1;
+    }
+
+    if ( $input =~ /^\s*:\s*(.*)/ ) {
+        $text = decode $encoding, `$1`;
     }
     elsif ( -r $input ) {
-        $text = read_file( $input, binmode => ':raw' );
+        $text = decode $encoding, read_file( $input );
     }
     else {
         carp 'bad input';
@@ -101,7 +110,7 @@ BBS::Perm::Plugin::Feed - a feed plugin for BBS::Perm
 
 =head1 VERSION
 
-This document describes BBS::Perm::Command version 0.0.2
+This document describes BBS::Perm::Command version 0.0.3
 
 
 =head1 SYNOPSIS
@@ -135,6 +144,10 @@ $label is a string, name it to what you want, default is '_Feed'.
 
 Get the contents of user's input, it's either a command's output or a file's
 contents.
+
+Caveat: command output and file contents are decoded by your system LANG or
+LC_ALL setting. So, you'd better update the encoding of your file in 
+accordance with your system settings.
 
 =item widget
 

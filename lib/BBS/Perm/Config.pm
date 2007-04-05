@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use Carp;
 
-use version; our $VERSION = qv('0.0.2');
+use version; our $VERSION = qv('0.0.3');
 
 BEGIN {
     local $@;
@@ -72,7 +72,7 @@ BBS::Perm::Config - wrap a BBS::Perm configuration file
 
 =head1 VERSION
 
-This document describes BBS::Perm::Config version 0.0.2
+This document describes BBS::Perm::Config version 0.0.3
 
 
 =head1 SYNOPSIS

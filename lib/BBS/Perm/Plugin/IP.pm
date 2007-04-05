@@ -10,7 +10,7 @@ use Gtk2;
 use Glib qw/TRUE FALSE/;
 use Encode;
 
-use version; our $VERSION = qv('0.0.2');
+use version; our $VERSION = qv('0.0.3');
 my $qqwry = IP::QQWry->new;
 
 sub new {
@@ -94,7 +94,7 @@ BBS::Perm::Plugin::IP - render IP infomation for BBS::Perm
 
 =head1 VERSION
 
-This document describes BBS::Perm::Plugin::IP version 0.0.2
+This document describes BBS::Perm::Plugin::IP version 0.0.3
 
 
 =head1 SYNOPSIS

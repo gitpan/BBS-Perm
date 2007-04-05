@@ -5,7 +5,7 @@ use strict;
 use Carp;
 use Glib qw/TRUE FALSE/;
 use Gnome2::Vte;
-use version; our $VERSION = qv('0.0.2');
+use version; our $VERSION = qv('0.0.3');
 
 sub new {
     my ( $class, %opt ) = @_;
@@ -13,12 +13,26 @@ sub new {
     $self->{widget} = Gtk2::HBox->new unless $self->{widget};
     $self->{terms}  = [];
     $self->{titles} = [];
+    $self->{encoding} = [];
     bless $self, ref $class || $class;
 }
 
 sub init {    # initiate a new term
     my ( $self, $conf ) = @_;
     my $term = Gnome2::Vte::Terminal->new;
+    push @{ $self->{terms} },  $term;
+    push @{ $self->{titles} }, $conf->{title}
+        || $conf->{username} . '@' . $conf->{site};
+    push @{ $self->{encoding} }, $conf->{encoding};
+
+    if ( defined $self->{current} ) {    # has term already?
+        $self->term->hide;
+    }
+
+    $self->{current} = $#{ $self->{terms} };
+    $self->widget->pack_start( $self->term, TRUE, TRUE, 0 );
+    $self->term->show;
+    $self->term->grab_focus;
 
     if ( $conf->{encoding} ) {
         $term->set_encoding( $conf->{encoding} );
@@ -31,18 +45,18 @@ sub init {    # initiate a new term
         $term->set_font_full( $font,
             $conf->{font}{anti_alias} || 'force_disable' );
     }
-#    color setting doesn't work, I think it's the problem of Gnome2::Vte or vtelib.
-#    if ( $conf->{color} ) {
-#        my @elements = qw/foreground background dim bold cursor highlight/;
-#        for (@elements) {
-#            if ( $conf->{color}{$_} ) {
-#                no strict 'refs';
-#                "Gnome2::Vte::Terminal::set_color_$_"->(
-#                    $term, Gtk2::Gdk::Color->parse($conf->{color}{$_})
-#                );
-#            }
-#        }
-#    }
+
+    if ( $conf->{color} ) {
+        my @elements = qw/foreground background dim bold cursor highlight/;
+        for (@elements) {
+            if ( $conf->{color}{$_} ) {
+                no strict 'refs';
+                "Gnome2::Vte::Terminal::set_color_$_"->(
+                    $term, Gtk2::Gdk::Color->parse($conf->{color}{$_})
+                );
+            }
+        }
+    }
 
     if ( $conf->{background_file} && -e $conf->{background_file} ) {
         $term->set_background_image_file( $conf->{background_file} );
@@ -56,21 +70,11 @@ sub init {    # initiate a new term
         $term->set_mouse_autohide($conf->{mouse_autohide});
     }
 
-    my $timeout = $conf->{timeout} || 60;
+    my $timeout = defined $conf->{timeout} ? $conf->{timeout} : 60;
+    if ( $timeout ) {
     $term->{timer} = Glib::Timeout->add( 1000 * $timeout,
         sub { $term->feed_child( chr 0 ); return TRUE; }, $term );
-    push @{ $self->{terms} },  $term;
-    push @{ $self->{titles} }, $conf->{title}
-        || $conf->{username} . '@' . $conf->{site};
-
-    if ( defined $self->{current} ) {    # has term already?
-        $self->term->hide;
     }
-
-    $self->{current} = $#{ $self->{terms} };
-    $self->widget->pack_start( $self->term, TRUE, TRUE, 0 );
-    $self->term->show;
-    $self->term->grab_focus;
 }
 
 sub clean {                              # called when child exited
@@ -154,6 +158,12 @@ sub title {
     return $self->{titles}[ $self->{current} ];
 }
 
+sub encoding {
+    my $self = shift;
+    return $self->{encoding}[ $self->{current} ];
+}
+
+
 sub text {    # get current terminal's text
               # list context is needed.
     my $self = shift;
@@ -178,7 +188,7 @@ BBS::Perm::Term - a multi-terminals component based on Vte for BBS::Perm
 
 =head1 VERSION
 
-This document describes BBS::Perm::Term version 0.0.2
+This document describes BBS::Perm::Term version 0.0.3
 
 
 =head1 SYNOPSIS
@@ -233,6 +243,10 @@ switch among them, choosing some as the current terminal.
 
 get current terminal's title.
 
+=item encoding
+
+get current terminal's encoding.
+
 =item text
 
 get current terminal's text. ( just plain text, not a colorful one, ;-)
@@ -253,9 +267,7 @@ None reported.
 
 =head1 BUGS AND LIMITATIONS
 
-You can't set colors for Gnome2::Vte::Terminal object right now, at least this
-doesn't work to me.
-Anyway, hey, the default color scheme is pretty enough, isn't? ;-)
+None reported.
 
 =head1 AUTHOR
 
