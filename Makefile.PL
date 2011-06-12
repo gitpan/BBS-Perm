@@ -1,27 +1,62 @@
+
 use strict;
-use inc::Module::Install 0.46;
-name 'BBS-Perm';
-license 'perl';
-all_from 'lib/BBS/Perm.pm';
-author 'sunnavy <sunnavy@gmail.com>';
-requires version => 0;
-requires Encode => 0;
-requires 'UNIVERSAL::require' => 0;
-requires 'UNIVERSAL::moniker' => 0;
-requires Gtk2 => '1.144';
-requires 'Gnome2::Vte' => '0.07';
-requires 'Regexp::Common' => '2.120';
-requires 'IP::QQWry' => '0.0.13'; 
-requires Expect => 0;
-requires 'File::Slurp' => 0;
+use warnings;
 
-requires( YAML => 0.35 ) unless can_use('YAML::Syck' => 0.71);
 
-build_requires 'Test::More' => 0;
 
-no_index directory => 'examples';
+use ExtUtils::MakeMaker 6.30;
 
-auto_install;
 
-WriteAll;
+
+my %WriteMakefileArgs = (
+  'ABSTRACT' => 'a BBS client based on vte',
+  'AUTHOR' => 'sunnavy <sunnavy@gmail.com>',
+  'BUILD_REQUIRES' => {},
+  'CONFIGURE_REQUIRES' => {
+    'ExtUtils::MakeMaker' => '6.30'
+  },
+  'DISTNAME' => 'BBS-Perm',
+  'EXE_FILES' => [
+    'bin/bbs-perm',
+    'bin/bbs-perm-config',
+    'bin/bbs-perm-agent'
+  ],
+  'LICENSE' => 'perl',
+  'NAME' => 'BBS::Perm',
+  'PREREQ_PM' => {
+    'Expect' => '0',
+    'File::Which' => '0',
+    'Gnome2::Vte' => '0',
+    'IO::Pty' => '0',
+    'IO::Stty' => '0',
+    'IP::QQWry' => '0',
+    'Regexp::Common' => '0',
+    'UNIVERSAL::moniker' => '0'
+  },
+  'VERSION' => '1.00',
+  'test' => {
+    'TESTS' => 't/*.t'
+  }
+);
+
+
+unless ( eval { ExtUtils::MakeMaker->VERSION(6.56) } ) {
+  my $br = delete $WriteMakefileArgs{BUILD_REQUIRES};
+  my $pp = $WriteMakefileArgs{PREREQ_PM};
+  for my $mod ( keys %$br ) {
+    if ( exists $pp->{$mod} ) {
+      $pp->{$mod} = $br->{$mod} if $br->{$mod} > $pp->{$mod};
+    }
+    else {
+      $pp->{$mod} = $br->{$mod};
+    }
+  }
+}
+
+delete $WriteMakefileArgs{CONFIGURE_REQUIRES}
+  unless eval { ExtUtils::MakeMaker->VERSION(6.52) };
+
+WriteMakefile(%WriteMakefileArgs);
+
+
 

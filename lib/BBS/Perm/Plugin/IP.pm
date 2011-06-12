@@ -10,7 +10,6 @@ use Gtk2;
 use Glib qw/TRUE FALSE/;
 use Encode;
 
-use version; our $VERSION = qv('0.0.3');
 my $qqwry = IP::QQWry->new;
 
 sub new {
@@ -19,12 +18,12 @@ sub new {
     my $widget = $opt{widget} || Gtk2::Statusbar->new;
     my $id     = $widget->get_context_id('ip');
     my $self   = { ip => {} };
-    $self->{widget} = $widget;
-    $self->{_id}    = $id;
+    $self->{widget}    = $widget;
+    $self->{_id}       = $id;
     $self->{_encoding} = $opt{encoding} || 'gbk';
+    $self->{_length}   = $opt{length} || 80;
     bless $self, ref $class || $class;
 }
-
 
 sub add {
     my ( $self, $input ) = @_;
@@ -60,11 +59,15 @@ sub show {
 
     if ( $self->ip ) {
         for ( sort keys %{ $self->ip } ) {
-            my $info = decode( $self->{_encoding}, join '',
-                grep {$_} @{ $self->ip->{$_} })
-                || q{};
+            my $info =
+              decode( $self->{_encoding}, join '',
+                grep { $_ } @{ $self->ip->{$_} } )
+              || q{};
             $show .= $_ . ': ' . $info . "; ";
         }
+
+        my $length = $self->{_length};
+        $show = sprintf( "%${length}s", $show );
     }
     $self->widget->pop( $self->_id );
     $self->widget->push( $self->_id, $show );
@@ -90,12 +93,6 @@ __END__
 =head1 NAME
 
 BBS::Perm::Plugin::IP - render IP infomation for BBS::Perm
-
-
-=head1 VERSION
-
-This document describes BBS::Perm::Plugin::IP version 0.0.3
-
 
 =head1 SYNOPSIS
 
@@ -152,19 +149,6 @@ return out object's widget, which is a Gtk2::Statusbar object.
 
 =back
 
-=head1 DEPENDENCIES
-
-L<IP::QQWry>, L<Regexp::Common>, L<Encode>, L<version>
-
-=head1 INCOMPATIBILITIES
-
-None reported.
-
-
-=head1 BUGS AND LIMITATIONS
-
-No bugs have been reported.
-
 =head1 AUTHOR
 
 sunnavy  C<< <sunnavy@gmail.com> >>
@@ -172,7 +156,7 @@ sunnavy  C<< <sunnavy@gmail.com> >>
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright (c) 2007, sunnavy C<< <sunnavy@gmail.com> >>. All rights reserved.
+Copyright (c) 2007-2010, sunnavy C<< <sunnavy@gmail.com> >>. 
 
 This module is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself. See L<perlartistic>.

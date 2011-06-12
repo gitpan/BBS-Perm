@@ -4,17 +4,17 @@ use warnings;
 use strict;
 use Carp;
 
-use version; our $VERSION = qv('0.0.3');
-
 BEGIN {
     local $@;
     eval { require YAML::Syck; };
     if ($@) {
         require YAML;
-        *LoadFile = *YAML::LoadFile;
+        *_LoadFile = *YAML::LoadFile;
+        *_DumpFile = *YAML::DumpFile;
     }
     else {
-        *LoadFile = *YAML::Syck::LoadFile;
+        *_LoadFile = *YAML::Syck::LoadFile;
+        *_DumpFile = *YAML::Syck::DumpFile;
     }
 }
 
@@ -32,17 +32,16 @@ sub new {
 
 sub load {
     my $self = shift;
-    $self->{config} = LoadFile(shift);
+    $self->{config} = _LoadFile(shift);
     $self->_tidy;
 }
-
 
 sub _tidy {
     my $self = shift;
     for my $site ( grep { $_ ne 'global' } keys %{ $self->{config} } ) {
-        for ( keys %{ $self->{config}{global}{term} } ) {
-            $self->{config}{$site}{$_} = $self->{config}{global}{term}{$_}
-                unless defined $self->{config}{$site}{$_};
+        for ( keys %{ $self->{config}{global} } ) {
+            $self->{config}{$site}{$_} = $self->{config}{global}{$_}
+              unless defined $self->{config}{$site}{$_};
         }
     }
 }
@@ -68,12 +67,6 @@ __END__
 =head1 NAME
 
 BBS::Perm::Config - wrap a BBS::Perm configuration file 
-
-
-=head1 VERSION
-
-This document describes BBS::Perm::Config version 0.0.3
-
 
 =head1 SYNOPSIS
 
@@ -117,19 +110,6 @@ return config file name
 
 =back
 
-=head1 DEPENDENCIES
-
-L<YAML>, L<YAML::Syck>, L<version>
-
-=head1 INCOMPATIBILITIES
-
-None reported.
-
-
-=head1 BUGS AND LIMITATIONS
-
-No bugs have been reported.
-
 =head1 AUTHOR
 
 sunnavy  C<< <sunnavy@gmail.com> >>
@@ -137,7 +117,7 @@ sunnavy  C<< <sunnavy@gmail.com> >>
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright (c) 2007, sunnavy C<< <sunnavy@gmail.com> >>. All rights reserved.
+Copyright (c) 2007-2010, sunnavy C<< <sunnavy@gmail.com> >>. 
 
 This module is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself. See L<perlartistic>.

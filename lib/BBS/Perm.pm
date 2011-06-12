@@ -11,7 +11,7 @@ use BBS::Perm::Config;
 use UNIVERSAL::require;
 use UNIVERSAL::moniker;
 
-use version; our $VERSION = qv('0.0.3');
+our $VERSION = '1.00';
 
 my %component = (
     IP   => 0,
@@ -22,6 +22,7 @@ my %component = (
 sub new {
     my ( $class, %opt ) = @_;
     my $self = {};
+    $opt{accel} = 1 unless exists $opt{accel};
 
     if ( $self->{window} ) {
         if ( ref $self->{window} eq 'Gtk2::Window' ) {
@@ -51,14 +52,13 @@ sub new {
             $_ = 'BBS::Perm::Plugin::' . $_;
             $_->require or die $@;
             my $key = $_->moniker;
-            $self->{$key} = $_->new(
-                %{ $self->config->setting('global')->{$key} },
-                defined $opt{$key} ? %{ $opt{$key} } : ()
-            );
+            $self->{$key} =
+              $_->new( %{ $self->config->setting('global')->{plugins}{$key} },
+                defined $opt{$key} ? %{ $opt{$key} } : () );
         }
     }
 
-    if ( not $opt{accel} ) {    # enable accel is default
+    if ( $opt{accel} ) {
         $self->_register_accel;
     }
 
@@ -67,8 +67,10 @@ sub new {
             activate => sub {
                 my $text = $self->feed->text || q{};
                 $text =~ s/(\033)/$1$1/g;    # term itself will eat an escape
-                $self->term->term->feed_child_binary(encode 'gbk', $text);
+                $self->term->term->feed_child_binary(
+                    encode $self->term->encoding, $text );
                 $self->feed->entry->set_text(q{});
+                $self->term->term->grab_focus;
             }
         );
     }
@@ -83,8 +85,10 @@ sub _clean {                                 # be called when an agent exited
         $self->window->set_title( $self->term->title );
     }
     else {
-        $self->window->set_title($self->config->setting('global')->{title} ||
-                'bbs-perm' );
+
+  #        $self->window->set_title($self->config->setting('global')->{title} ||
+  #                'bbs-perm' );
+        Gtk2->main_quit;
     }
 }
 
@@ -96,58 +100,78 @@ sub _switch {
 
 sub _register_accel {
     my $self  = shift;
-    my %accel = ();
-    if ( $self->config->setting('global')->{accel} ) {
-        %accel = %{ $self->config->setting('global')->{accel} };
-    }
+    my %accel = (
+        quit       => 'MW-q',
+        copy       => 'MW-c',
+        paste      => 'MW-v',
+        fullscreen => 'MW-f',
+        close_tab  => 'MW-w',
+        left_tab   => 'M-[',
+        right_tab  => 'M-]',
+        feed       => 'M-f',
+        $self->config->setting('global')->{shortcuts}
+        ? %{ $self->config->setting('global')->{shortcuts} }
+        : ()
+    );
 
-    for ( keys %accel ) {
-        my $value = $accel{$_};
-        my $mod   = ['mod1-mask'];
-        if ( $value =~ /^(C|M)-(.)/i ) {
-            $mod = ['control-mask'] if lc $1 eq 'c';
-            $accel{$_} = [ $2, $mod ];
-        }
-        else {
-            warn "accel $_ is incorrect";
-        }
-    }
-
+    my $fullscreen = 0;
     my @accels = (
-        [   $accel{left}->[0] || 'j',
-            $accel{left}->[1] || ['mod1-mask'],
-            ['visible'],
+        [
+            $self->_parse_shortcut( $accel{quit} ),
+            ['mask'],
+            sub { Gtk2->main_quit }
+        ],
+        [
+            $self->_parse_shortcut( $accel{close_tab} ),
+            ['mask'],
+            sub { $self->term->clean }
+        ],
+        [
+            $self->_parse_shortcut( $accel{copy} ),
+            ['mask'],
+            sub {
+                my $focus = $self->window->get_focus;
+                $focus->copy_clipboard if $focus;
+              }
+        ],
+        [
+            $self->_parse_shortcut( $accel{paste} ),
+            ['mask'],
+            sub {
+                my $focus = $self->window->get_focus;
+                $focus->paste_clipboard if $focus;
+              }
+        ],
+        [
+            $self->_parse_shortcut( $accel{fullscreen} ),
+            ['mask'],
+            sub {
+                if ($fullscreen) {
+                    $self->window->unfullscreen;
+                    $fullscreen = 0;
+                }
+                else {
+                    $self->window->fullscreen;
+                    $fullscreen = 1;
+                }
+              }
+        ],
+        [
+            $self->_parse_shortcut( $accel{left_tab} ),
+            ['mask'],
             sub { $self->_switch(-1) }
         ],
-        [   $accel{right}->[0] || 'k',
-            $accel{right}->[1] || ['mod1-mask'],
-            ['visible'],
+        [
+            $self->_parse_shortcut( $accel{right_tab} ),
+            ['mask'],
             sub { $self->_switch(1) }
         ],
     );
 
-    for my $site ( $self->config->sites ) {
-        my $shortcut = $self->config->setting($site)->{shortcut};
-        my $mod      = ['mod1-mask'];
-        if ( $shortcut =~ /^(C|M)-(\w)/i ) {
-            $mod = ['control-mask'] if lc $1 eq 'c';
-            push @accels, [
-                $2, $mod,
-                ['visible'],
-                sub {
-                    $self->connect($site);
-                    }
-            ];
-        }
-    }
-
     if ( $component{Feed} ) {
         push @accels, [
-            $accel{feed}->[0]
-                || 'f',
-            $accel{feed}->[1]
-                || ['control-mask'],
-            ['visible'],
+            $self->_parse_shortcut( $accel{feed} ),
+            ['mask'],
             sub {
                 if ( $self->feed->entry->has_focus ) {
                     $self->term->term->grab_focus if $self->term->term;
@@ -155,38 +179,80 @@ sub _register_accel {
                 else {
                     $self->feed->entry->grab_focus;
                 }
-                }
-            ],
-            ;
+            },
+        ];
     }
 
     if ( $component{URI} ) {
         for my $key ( 0 .. 9 ) {
             push @accels, [
                 $key,
-                ['mod1-mask'],
-                ['visible'],
+                ['mod1-mask', 'super-mask'],
+                ['mask'],
                 sub {
-                    if ( $self->uri->uri->[ $key - 1 ] ) {
-                        $self->uri->widget->set_uri(
-                              $key == 0
-                            ? $self->config->get_value( global => 'uri' )
-                            : $self->uri->uri->[ $key - 1 ]
-                        );
+                    my $uri;
+                    if ( $key > 0 ) {
+                        if ( $key == 9 ) {
+                            # 9 means last one
+                            $uri = $self->uri->uri->[-1];
+                        }
+                        else {
+                            $uri = $self->uri->uri->[ $key - 1 ];
+                        }
                     }
-                    else {
-                        $self->uri->widget->set_uri( $self->uri->uri->[-1] );
-                    }
-                    $self->uri->widget->clicked;
+
+                    $uri ||=
+                      $self->config->setting('global')->{plugins}{uri}{default};
+                    $self->uri->browse($uri);
                 },
             ];
         }
     }
 
+    for my $site ( $self->config->sites ) {
+        my $shortcut = $self->config->setting($site)->{shortcut};
+        next unless $shortcut;
+        push @accels, [
+            $self->_parse_shortcut($shortcut),
+            ['mask'],
+            sub {
+                $self->connect($site);
+              }
+        ];
+    }
+
+
     my $window = $self->{window};
     my $accel  = Gtk2::AccelGroup->new;
     $accel->connect( ord $_->[0], @$_[ 1 .. 3 ] ) for @accels;
     $window->add_accel_group($accel);
+}
+
+sub _parse_shortcut {
+    my $self = shift;
+    my $str = shift or return;
+
+    my %mask;
+    return unless $str =~ /([CMSW]+)-(.)/i;
+    my $char = $2;
+    for ( split //, $1 ) {
+        if (/C/i) {
+            $mask{'control-mask'} = 1;
+        }
+        elsif (/M/i) {
+            $mask{'mod1-mask'} = 1;
+        }
+        elsif (/S/i) {
+            $mask{'shift-mask'} = 1;
+        }
+        elsif (/W/i) {
+            $mask{'super-mask'} = 1;
+        }
+        else {
+            warn "invalid mask: $_";
+        }
+    }
+    return ( $char, [ keys %mask ] );
 }
 
 sub import {
@@ -201,16 +267,28 @@ sub import {
 
 sub connect {
     my ( $self, $site ) = @_;
+    if ( !$site ) {
+
+        # get the default ones
+        my $default = $self->config->setting('global')->{default};
+        if ($default) {
+            for ( ref $default eq 'ARRAY' ? @$default : $default ) {
+                $self->connect($_);
+            }
+        }
+        return;
+    }
+
     my $conf = $self->config->setting($site);
     $self->term->init($conf);
 
     $self->term->term->signal_connect(
         contents_changed => sub {
             $self->_contents_changed;
-        }
+        },
     );
-    $self->term->term->signal_connect( child_exited => sub { $self->_clean }
-    );
+
+    $self->term->term->signal_connect( child_exited => sub { $self->_clean } );
     $self->window->set_title( $self->term->title );
 
     $self->term->connect( $conf, $self->config->file, $site );
@@ -223,9 +301,7 @@ sub _contents_changed {
     if ( $component{URI} ) {
         $self->uri->clear;    # clean previous uri
         $self->uri->push($1)
-            while $text =~ /($RE{URI}{HTTP} | $RE{URI}{FTP})/gx;
-
-        #        $self->uri->widget->set_label( $self->uri->show );
+          while $text =~ /($RE{URI}{HTTP} | $RE{URI}{FTP})/gx;
     }
     if ( $component{IP} ) {
         $self->ip->clear;     # and ip info.
@@ -254,13 +330,7 @@ __END__
 
 =head1 NAME
 
-BBS::Perm - a component for your own BBS client
-
-
-=head1 VERSION
-
-This document describes BBS::Perm version 0.0.3
-
+BBS::Perm - a BBS client based on vte
 
 =head1 SYNOPSIS
 
@@ -273,25 +343,26 @@ This document describes BBS::Perm version 0.0.3
 
 =head1 DESCRIPTION
 
-Want to build your own BBS client using Gtk2? Maybe BBS::Perm can help you.
+C<Perm> means C<Perl> + C<Term> here.
 
-Although BBS::Perm is still very, very young, it can help you now.
+here is a list L<BBS::Perm> can supply:
 
-With BBS::Perm, you can:
-
-1. have multi terminals at the same time, and quickly switch among them.
+1. multiple terminals and quickly switch between them.
 
 2. anti-idle
 
-3. commit sth. from file or even command output directly.
+3. commit stuff from file or even command output directly.
 
-4. extract URIs and browse them quickly.
+4. browse URIs quickly.
 
-5. get some useful information of IPv4 addresses.
+5. show information of IPv4 addresses, thanks to L<IP::QQWry>.
 
 6. build your window layout freely.
 
 7. use your own agent script.
+
+
+Check out bin/bbs-perm and examples/bbspermrc for example.
 
 =head1 INTERFACE
 
@@ -341,7 +412,8 @@ return the main window object, which is a Gtk2::Window object.
 
 =head1 DEPENDENCIES
 
-L<Gtk2>, L<Regexp::Common>, L<UNIVERSAL::require>, L<UNIVERSAL::moniker>,L<version>
+L<Gtk2>, L<Regexp::Common>, L<UNIVERSAL::require>, L<UNIVERSAL::moniker>,
+L<File::Which>
 
 =head1 INCOMPATIBILITIES
 
@@ -351,7 +423,7 @@ None reported.
 
 When a terminal is destroyed, if there is a warning like
 "gdk_window_invalidate_maybe_recurse: assertion `window != NULL' failed",
-please update you vte lib to 0.14 or above, this bug will gone, ;-)
+please update you vte lib to 0.14 or above, then this bug will be gone.
 
 =head1 AUTHOR
 
@@ -360,7 +432,7 @@ sunnavy  C<< <sunnavy@gmail.com> >>
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright (c) 2007, sunnavy C<< <sunnavy@gmail.com> >>. All rights reserved.
+Copyright (c) 2007-2011, sunnavy C<< <sunnavy@gmail.com> >>. 
 
 This module is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself. See L<perlartistic>.

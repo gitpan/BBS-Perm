@@ -5,14 +5,14 @@ use strict;
 use Carp;
 use Glib qw/TRUE FALSE/;
 use Gnome2::Vte;
-use version; our $VERSION = qv('0.0.3');
+use File::Spec::Functions 'file_name_is_absolute';
 
 sub new {
     my ( $class, %opt ) = @_;
     my $self = {%opt};
-    $self->{widget} = Gtk2::HBox->new unless $self->{widget};
-    $self->{terms}  = [];
-    $self->{titles} = [];
+    $self->{widget}   = Gtk2::HBox->new unless $self->{widget};
+    $self->{terms}    = [];
+    $self->{titles}   = [];
     $self->{encoding} = [];
     bless $self, ref $class || $class;
 }
@@ -22,7 +22,7 @@ sub init {    # initiate a new term
     my $term = Gnome2::Vte::Terminal->new;
     push @{ $self->{terms} },  $term;
     push @{ $self->{titles} }, $conf->{title}
-        || $conf->{username} . '@' . $conf->{site};
+      || $conf->{username} . '@' . $conf->{site};
     push @{ $self->{encoding} }, $conf->{encoding};
 
     if ( defined $self->{current} ) {    # has term already?
@@ -38,12 +38,9 @@ sub init {    # initiate a new term
         $term->set_encoding( $conf->{encoding} );
     }
 
-    if ( $conf->{font} && $conf->{font}{family} && $conf->{font}{size} ) {
-        my $font = Gtk2::Pango::FontDescription->new;
-        $font->set_family( $conf->{font}{family} );
-        $font->set_size( $conf->{font}{size} * 1000 );
-        $term->set_font_full( $font,
-            $conf->{font}{anti_alias} || 'force_disable' );
+    if ( $conf->{font} ) {
+        my $font = Pango::FontDescription->from_string( $conf->{font} );
+        $term->set_font($font);
     }
 
     if ( $conf->{color} ) {
@@ -52,7 +49,7 @@ sub init {    # initiate a new term
             if ( $conf->{color}{$_} ) {
                 no strict 'refs';
                 "Gnome2::Vte::Terminal::set_color_$_"->(
-                    $term, Gtk2::Gdk::Color->parse($conf->{color}{$_})
+                    $term, Gtk2::Gdk::Color->parse( $conf->{color}{$_} )
                 );
             }
         }
@@ -66,18 +63,23 @@ sub init {    # initiate a new term
         $term->set_background_transparent(1);
     }
 
+    if ( defined $conf->{opacity} ) {
+        $conf->{opacity} *= 65535 if $conf->{opacity} <= 1;
+        $term->set_opacity($conf->{opacity});
+    }
+
     if ( defined $conf->{mouse_autohide} ) {
-        $term->set_mouse_autohide($conf->{mouse_autohide});
+        $term->set_mouse_autohide( $conf->{mouse_autohide} );
     }
 
     my $timeout = defined $conf->{timeout} ? $conf->{timeout} : 60;
-    if ( $timeout ) {
-    $term->{timer} = Glib::Timeout->add( 1000 * $timeout,
-        sub { $term->feed_child( chr 0 ); return TRUE; }, $term );
+    if ($timeout) {
+        $term->{timer} = Glib::Timeout->add( 1000 * $timeout,
+            sub { $term->feed_child( chr 0 ); return TRUE; }, $term );
     }
 }
 
-sub clean {                              # called when child exited
+sub clean {    # called when child exited
     my $self = shift;
     my ( $current, $new_pos );
     $new_pos = $current = $self->{current};
@@ -99,13 +101,13 @@ sub clean {                              # called when child exited
     $self->term->destroy;
     splice @{ $self->{terms} }, $current, 1;
     $self->{current} = $new_pos == 0 ? 0 : $new_pos - 1
-        if defined $new_pos;
+      if defined $new_pos;
 }
 
 sub term {    # get current terminal
     my $self = shift;
     return $self->{terms}->[ $self->{current} ]
-        if defined $self->{current};
+      if defined $self->{current};
 }
 
 sub switch {    # switch terms, -1 for left, 1 for right
@@ -143,10 +145,44 @@ sub switch {    # switch terms, -1 for left, 1 for right
 sub connect {
     my ( $self, $conf, $file, $site ) = @_;
     my $agent = $conf->{agent} || $self->{agent};
-    if ( $agent ) {
-        $self->term->fork_command( $agent,
-            [ $agent, $file, $site ],
-            undef, q{}, FALSE, FALSE, FALSE );
+
+    # check if it's a perl script
+    my $use_current_perl;
+
+    unless ( file_name_is_absolute( $agent ) ) {
+        require File::Which;
+        my $path = File::Which::which( $agent );
+        if ( $path ) {
+            $agent = $path;
+        }
+        else {
+            die "can't find $agent";
+        }
+    }
+
+    if ( -T $agent ) {
+        open my $fh, '<', $agent or die "can't open $agent: $!";
+        my $shebang = <$fh>;
+        if ( $shebang =~ m{#!/usr/bin/(?:perl|env\s+perl)} ) {
+            $use_current_perl = 1;
+        }
+    }
+    elsif ( !-e $agent ) {
+        die "$agent doesn't exist";
+    }
+
+    if ($agent) {
+        $self->term->fork_command(
+            ( $use_current_perl ? $^X : $agent ),
+            (
+                [
+                    ( $use_current_perl ? ($^X) : () ),
+                    $agent,
+                    $conf->{protocol} =~ /ssh|telnet/ ? ( $file, $site ) : ()
+                ]
+            ),
+            undef, q{}, FALSE, FALSE, FALSE
+        );
     }
     else {
         croak 'seems something wrong with your agent script';
@@ -162,7 +198,6 @@ sub encoding {
     my $self = shift;
     return $self->{encoding}[ $self->{current} ];
 }
-
 
 sub text {    # get current terminal's text
               # list context is needed.
@@ -184,12 +219,6 @@ __END__
 =head1 NAME
 
 BBS::Perm::Term - a multi-terminals component based on Vte for BBS::Perm
-
-
-=head1 VERSION
-
-This document describes BBS::Perm::Term version 0.0.3
-
 
 =head1 SYNOPSIS
 
@@ -257,18 +286,6 @@ when an agent script exited, this method will be call, for cleaning, of cause.
 
 =back
 
-=head1 DEPENDENCIES
-
-L<Gnome2::Vte>, L<Gtk2>, L<version> 
-
-=head1 INCOMPATIBILITIES
-
-None reported.
-
-=head1 BUGS AND LIMITATIONS
-
-None reported.
-
 =head1 AUTHOR
 
 sunnavy  C<< <sunnavy@gmail.com> >>
@@ -276,7 +293,7 @@ sunnavy  C<< <sunnavy@gmail.com> >>
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright (c) 2007, sunnavy C<< <sunnavy@gmail.com> >>. All rights reserved.
+Copyright (c) 2007-2010, sunnavy C<< <sunnavy@gmail.com> >>. 
 
 This module is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself. See L<perlartistic>.

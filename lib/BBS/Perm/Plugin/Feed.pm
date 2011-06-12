@@ -7,18 +7,17 @@ use Gtk2;
 use Glib qw/TRUE FALSE/;
 use File::Slurp;
 use Encode;
-use version; our $VERSION = qv('0.0.3');
 
 sub new {
     my ( $class, %args ) = @_;
-    my $self  = {};
+    my $self = {};
     bless $self, ref $class || $class;
 
-    my $entry = Gtk2::Entry->new;
-    my $label = Gtk2::Label->new_with_mnemonic( $args{label} || '_Feed: ');
-    my $widget   = $args{widget} || Gtk2::HBox->new; 
+    my $entry  = Gtk2::Entry->new;
+    my $label  = Gtk2::Label->new_with_mnemonic( $args{label} || '_Feed: ' );
+    my $widget = $args{widget} || Gtk2::HBox->new;
     $widget->pack_start( $label, FALSE, FALSE, 0 );
-    $widget->pack_start( $entry, TRUE, TRUE, 0 );
+    $widget->pack_start( $entry, TRUE,  TRUE,  0 );
     $entry->signal_connect( changed => sub { $self->_update_store } );
     my $entry_c = Gtk2::EntryCompletion->new;
     $entry->set_completion($entry_c);
@@ -28,11 +27,11 @@ sub new {
     $entry_c->set_text_column(0);
     $entry_c->set_popup_completion(TRUE);
     $entry_c->set_inline_completion(TRUE);
-    $self->{entry}  = $entry;
-    $self->{label}  = $label;
+    $self->{entry}    = $entry;
+    $self->{label}    = $label;
     $self->{_entry_c} = $entry_c;
-    $self->{_store} = $store;
-    $self->{widget} = $widget;
+    $self->{_store}   = $store;
+    $self->{widget}   = $widget;
     return $self;
 }
 
@@ -47,8 +46,8 @@ sub _update_store {
         opendir $dh, $1;
 
         my @names = map { $dir . $_ }
-            grep { ( $_ !~ /^\./ ) && ( -d "$dir/$_" || -T "$dir/$_" ) }
-            readdir $dh;
+          grep { ( $_ !~ /^\./ ) && ( -d "$dir/$_" || -T "$dir/$_" ) }
+          readdir $dh;
         for (@names) {
             my $iter = $store->append;
             $store->set( $iter, 0, $_ );
@@ -61,20 +60,20 @@ sub text {
     my $self  = shift;
     my $input = $self->entry->get_text;
     my $text;
-    
-    my $encoding = 'utf8';          # default is utf8
-    if ( $ENV{LLC_ALL} =~ /\.(.*)$/ ) {
+
+    my $encoding = 'utf8';    # default is utf8
+    if ( $ENV{LLC_ALL} && $ENV{LLC_ALL} =~ /\.(.*)$/ ) {
         $encoding = lc $1;
     }
-    elsif ( $ENV{LANG} =~ /\.(.*)$/ ) {
+    elsif ( $ENV{LANG} && $ENV{LANG} =~ /\.(.*)$/ ) {
         $encoding = lc $1;
     }
 
     if ( $input =~ /^\s*:\s*(.*)/ ) {
         $text = decode $encoding, `$1`;
     }
-    elsif ( -r $input ) {
-        $text = decode $encoding, read_file( $input );
+    elsif ( -f $input ) {
+        $text = decode $encoding, read_file($input);
     }
     else {
         carp 'bad input';
@@ -106,12 +105,6 @@ __END__
 =head1 NAME
 
 BBS::Perm::Plugin::Feed - a feed plugin for BBS::Perm
-
-
-=head1 VERSION
-
-This document describes BBS::Perm::Command version 0.0.3
-
 
 =head1 SYNOPSIS
 
@@ -155,19 +148,6 @@ Get our object's widget.
 
 =back
 
-=head1 DEPENDENCIES
-
-L<Gtk2>, <File::Slurp>, L<version>
-
-=head1 INCOMPATIBILITIES
-
-None reported.
-
-
-=head1 BUGS AND LIMITATIONS
-
-No bugs have been reported.
-
 =head1 AUTHOR
 
 sunnavy  C<< <sunnavy@gmail.com> >>
@@ -175,7 +155,7 @@ sunnavy  C<< <sunnavy@gmail.com> >>
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright (c) 2007, sunnavy C<< <sunnavy@gmail.com> >>. All rights reserved.
+Copyright (c) 2007-2010, sunnavy C<< <sunnavy@gmail.com> >>. 
 
 This module is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself. See L<perlartistic>.
