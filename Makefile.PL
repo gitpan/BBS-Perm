@@ -25,6 +25,7 @@ my %WriteMakefileArgs = (
   'NAME' => 'BBS::Perm',
   'PREREQ_PM' => {
     'Expect' => '0',
+    'File::Slurp' => '0',
     'File::Which' => '0',
     'Gnome2::Vte' => '0',
     'IO::Pty' => '0',
@@ -33,7 +34,7 @@ my %WriteMakefileArgs = (
     'Regexp::Common' => '0',
     'UNIVERSAL::moniker' => '0'
   },
-  'VERSION' => '1.00',
+  'VERSION' => '1.01_01',
   'test' => {
     'TESTS' => 't/*.t'
   }
