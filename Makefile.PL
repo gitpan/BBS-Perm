@@ -17,9 +17,9 @@ my %WriteMakefileArgs = (
   },
   'DISTNAME' => 'BBS-Perm',
   'EXE_FILES' => [
-    'bin/bbs-perm',
+    'bin/bbs-perm-agent',
     'bin/bbs-perm-config',
-    'bin/bbs-perm-agent'
+    'bin/bbs-perm'
   ],
   'LICENSE' => 'perl',
   'NAME' => 'BBS::Perm',
@@ -32,9 +32,10 @@ my %WriteMakefileArgs = (
     'IO::Stty' => '0',
     'IP::QQWry' => '0',
     'Regexp::Common' => '0',
-    'UNIVERSAL::moniker' => '0'
+    'UNIVERSAL::moniker' => '0',
+    'YAML::Syck' => '0'
   },
-  'VERSION' => '1.01_01',
+  'VERSION' => '1.00_02',
   'test' => {
     'TESTS' => 't/*.t'
   }

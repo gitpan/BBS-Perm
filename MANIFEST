@@ -16,12 +16,12 @@ lib/BBS/Perm/Plugin/IP.pm
 lib/BBS/Perm/Plugin/URI.pm
 lib/BBS/Perm/Term.pm
 t/BBS-Perm-Config.t
-t/BBS-Perm-Plugin-Feed.t
 t/BBS-Perm-Plugin-IP.t
 t/BBS-Perm-Plugin-URI.t
 t/BBS-Perm-Term.t
-t/BBS-Perm.t
 t/config.yml
 t/release-pod-syntax.t
+xt/BBS-Perm-Plugin-Feed.t
+xt/BBS-Perm.t
 xt/pod-coverage.t
 xt/pod.t
